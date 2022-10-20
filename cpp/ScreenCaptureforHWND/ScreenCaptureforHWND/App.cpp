@@ -2,7 +2,7 @@
 //
 // Copyright (c) Microsoft. All rights reserved.
 // This code is licensed under the MIT License (MIT).
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// THE SOFTWARE IS PROVIDED ï¿½AS ISï¿½, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
 // IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
@@ -54,7 +54,7 @@ void App::Initialize(
     m_device = CreateDirect3DDevice(dxgiDevice.get());
 }
 
-void App::StartCapture(HWND hwnd)
+void App::StartCaptureByWindow(HWND hwnd)
 {
 	if (m_capture)
 	{
@@ -63,6 +63,24 @@ void App::StartCapture(HWND hwnd)
 	}
 
 	auto item = CreateCaptureItemForWindow(hwnd);
+
+    m_capture = std::make_unique<SimpleCapture>(m_device, item);
+
+    auto surface = m_capture->CreateSurface(m_compositor);
+    m_brush.Surface(surface);
+
+    m_capture->StartCapture();
+}
+
+void App::StartCaptureByMonitor(HMONITOR monitor)
+{
+	if (m_capture)
+	{
+		m_capture->Close();
+		m_capture = nullptr;
+	}
+
+	auto item = CreateCaptureItemForMonitor(monitor);
 
     m_capture = std::make_unique<SimpleCapture>(m_device, item);
 

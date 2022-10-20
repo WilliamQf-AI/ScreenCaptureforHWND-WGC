@@ -2,7 +2,7 @@
 //
 // Copyright (c) Microsoft. All rights reserved.
 // This code is licensed under the MIT License (MIT).
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// THE SOFTWARE IS PROVIDED ï¿½AS ISï¿½, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
 // INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
 // IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
@@ -17,6 +17,7 @@
 #include "SimpleCapture.h"
 #include <ShObjIdl.h>
 #include "Win32WindowEnumeration.h"
+#include "Win32MonitorEnumeration.h"
 
 using namespace winrt;
 using namespace Windows::UI;
@@ -58,6 +59,10 @@ int CALLBACK WinMain(
 
 auto g_app = std::make_shared<App>();
 auto g_windows = EnumerateWindows();
+auto g_monitors = EnumerateMonitors();
+
+HWND g_comboWindow = NULL;
+HWND g_comboMonitor = NULL;
 
 LRESULT CALLBACK WndProc(
     HWND   hwnd,
@@ -108,7 +113,7 @@ int CALLBACK WinMain(
     UpdateWindow(hwnd);
 
     // Create combo box
-    HWND comboBoxHwnd = CreateWindow(
+    g_comboWindow = CreateWindow(
         WC_COMBOBOX,
         L"",
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
@@ -120,14 +125,34 @@ int CALLBACK WinMain(
         NULL,
         instance,
         NULL);
-    WINRT_VERIFY(comboBoxHwnd);
+    WINRT_VERIFY(g_comboWindow);
 
     // Populate combo box
     for (auto& window : g_windows)
     {
-        SendMessage(comboBoxHwnd, CB_ADDSTRING, 0, (LPARAM)window.Title().c_str());
+        SendMessage(g_comboWindow, CB_ADDSTRING, 0, (LPARAM)window.Title().c_str());
     }
-    //SendMessage(comboBoxHwnd, CB_SETCURSEL, 0, 0);
+    //SendMessage(g_comboWindow, CB_SETCURSEL, 0, 0);
+
+    g_comboMonitor = CreateWindow(
+        WC_COMBOBOX,
+        L"",
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        300,
+        10,
+        200,
+        200,
+        hwnd,
+        NULL,
+        instance,
+        NULL);
+    WINRT_VERIFY(g_comboMonitor);
+
+    // Populate combo box
+    for (auto& monitor : g_monitors)
+    {
+        SendMessage(g_comboMonitor, CB_ADDSTRING, 0, (LPARAM)monitor.Name().c_str());
+    }
 
     // Create a DispatcherQueue for our thread
     auto controller = CreateDispatcherQueueController();
@@ -170,13 +195,17 @@ LRESULT CALLBACK WndProc(
         PostQuitMessage(0);
         break;
     case WM_COMMAND:
-        if (HIWORD(wParam) == CBN_SELCHANGE)
-        {
-            auto index = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-            auto window = g_windows[index];
-            g_app->StartCapture(window.Hwnd());
-        }
-        break;
+      if (HIWORD(wParam) == CBN_SELCHANGE && (HWND)lParam == g_comboWindow) {
+        auto index = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
+        auto window = g_windows[index];
+        g_app->StartCaptureByWindow(window.Hwnd());
+      } else if (HIWORD(wParam) == CBN_SELCHANGE &&
+                 (HWND)lParam == g_comboMonitor) {
+        auto index = SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
+        auto monitor = g_monitors[index];
+        g_app->StartCaptureByMonitor(monitor.Hmonitor());
+      }
+      break;
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
         break;
